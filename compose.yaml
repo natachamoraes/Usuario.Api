@@ -1,0 +1,22 @@
+﻿services:
+#  usuario.api:
+#    image: usuario.api
+#    build:
+#      context: .
+#      dockerfile: Dockerfile
+      
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server
+    container_name: sqlserver
+    ports:
+      - "1433:1433"
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: "SuaSenhaForte123!"
+      MSSQL_DATABASE: "usuario"           # Nome do banco de dados padrão
+    volumes:
+      - sqlserver-data:/var/opt/mssql
+
+volumes:
+  sqlserver-data:
+    driver: local
