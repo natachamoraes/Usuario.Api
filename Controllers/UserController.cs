@@ -5,6 +5,7 @@ using System;
 using System.Linq; 
 using System.Threading.Tasks;
 using Usuario.Api.Model;
+using Usuario.Api.Service;
 
 namespace Usuario.Api.Controllers
 {
@@ -12,27 +13,40 @@ namespace Usuario.Api.Controllers
     [Route("api/[controller]")]
     public class UserController : ControllerBase
     {
-        private readonly UserRepository _repository;
+        private readonly UserService _userService;
 
-        public UserController(UserRepository repository)
+        public UserController(UserService service)
         {
-            _repository = repository;
+            _userService = service;
         }
 
         [HttpPost]
-        public async Task<IActionResult> CreateUser([FromBody] User user)
+        public async Task<IActionResult> CreateUser([FromBody] CreateUserRequestDto user)
         {
-            if (user == null)
-                return BadRequest("Usuário inválido");
+            try
+            {
+                var createUser = await _userService.CreateUser(user);
 
-            await _repository.InsertAsync(user); 
-            return Ok("Usuário criado com sucesso");
+                var response = new ApiResponse<User>()
+                {
+                    Success = true,
+                    Message = "Usuario criado com sucesso",
+                    Data = createUser
+                };
+            
+                return CreatedAtAction(nameof(CreateUser), response);
+            }
+            catch (Exception e)
+            {
+                var response = new ApiResponse<User>(false, e.Message, null);
+                return StatusCode(500, response);
+            }
         }
 
         [HttpGet]
-        public async Task<IActionResult> GetUser([FromQuery]Guid id)
+        public async Task<IActionResult> GetUser([FromQuery]int id)
         {
-            var user = await _repository.GetByIdAsync(id);
+            var user = await _userService.GetUserById(id);
             if (user == null)
                 return NotFound("Usuário não encontrado");
 
@@ -40,9 +54,9 @@ namespace Usuario.Api.Controllers
         }
         
         [HttpGet("[action]")]
-        public async Task<IActionResult> GetAllUsers([FromQuery] UserRequest request)
+        public async Task<IActionResult> GetAllUsers([FromQuery] UserRequestDto requestDto)
         {
-            var users = await _repository.GetAllAsync(request.PageNumber, request.PageSize);
+            var users = await _userService.GetAllUsers(requestDto);
 
             if (!users.Any())
                 return NotFound("Nenhum usuário encontrado");
@@ -50,5 +64,48 @@ namespace Usuario.Api.Controllers
             return Ok(users);
         }
 
+        [HttpPut]
+        public async Task<IActionResult> UpdateUser([FromBody] UpdateUserRequestDto user)
+        {
+            try
+            {
+                var userUpdate = await _userService.UpdateUser(user);
+                var response = new ApiResponse<User>()
+                {
+                    Success = true,
+                    Message = "Usuario atualizado com sucesso",
+                    Data = userUpdate
+                };
+                
+                
+                return  Ok(response);
+            }
+            catch (Exception e)
+            {
+                var response = new ApiResponse<User>(false, e.Message, null);
+                return StatusCode(500, response);
+            }
+            
+        }
+        [HttpDelete]
+        public async Task<IActionResult> DeleteUser([FromQuery] int id)
+        {
+            try
+            {
+                await _userService.DeleteUser(id);
+                var response = new ApiResponse<User>()
+                {
+                    Success = true,
+                    Message = "Usuario Deletado com sucesso"
+                };
+                    
+                return Ok(response);
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e);
+                throw;
+            }
+        }
     }
 }

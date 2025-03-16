@@ -2,6 +2,7 @@ using Dapper;
 using System.Data;
 using System.Threading.Tasks;
 using System.Collections.Generic;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 using Usuario.Api.Entity;
 
@@ -23,11 +24,11 @@ namespace Usuario.Api.Data.Repository
             try
             {
                 var users = await _context.Users
-                    .OrderBy(u => u.Id) // Ordenar por uma coluna existente
+                    .OrderBy(u => u.Id)
                     .Skip((pageNumber - 1) * pageSize)
                     .Take(pageSize)
                     .ToListAsync();
-        
+
                 return users;
             }
             catch (Exception e)
@@ -36,24 +37,76 @@ namespace Usuario.Api.Data.Repository
                 throw;
             }
         }
-        public async Task<User> GetByIdAsync(Guid id)
+
+        public async Task<User?> GetByIdAsync(int id)
         {
-            using (IDbConnection connection = _connectionFactory.CreateConnection())
+            try
             {
-                connection.Open();
-                var result = await connection.QueryFirstOrDefaultAsync<User>(
-                    "SELECT * FROM Users WHERE Id = @Id", new { Id = id });
-                return result;
+                var entity = _context.Users.FirstOrDefault(x => x.Id == id);
+                return entity;
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e);
+                throw;
             }
         }
 
-        public async Task InsertAsync(User user)
+        public async Task<User> InsertAsync(User user)
         {
-            using (IDbConnection connection = _connectionFactory.CreateConnection())
+            try
             {
-                connection.Open();
-                string sql = "INSERT INTO Users (Id, Name) VALUES (@Id, @Name)";
-                await connection.ExecuteAsync(sql, new { Id = user.Id, Name = user.Name });
+                var entity = await _context.Users.AddAsync(user);
+                await _context.SaveChangesAsync();
+
+                return entity.Entity;
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e);
+                throw;
+            }
+
+        }
+
+        public async Task<User> UpdateAsync(User user)
+        {
+            try
+            {
+                var findUser = await _context.Users.FindAsync(user.Id);
+                if (findUser == null) throw new ArgumentException("Usuário não encontrado");
+
+                _context.Entry(findUser).State = EntityState.Detached;
+
+                var editUser = _context.Users.Update(user);
+                await _context.SaveChangesAsync();
+
+                return editUser.Entity;
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e);
+                throw;
+            }
+
+        }
+
+        public async Task<User?> DeleteAsync(int id)
+        {
+            try
+            {
+                var user = await _context.Users.FindAsync(id);
+                if (user == null) throw new ArgumentException("Usuário não encontrado");
+                
+                _context.Users.Remove(user);
+                await _context.SaveChangesAsync();
+                
+                return user;
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e);
+                throw;
             }
         }
     }
